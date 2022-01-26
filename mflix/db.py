@@ -44,14 +44,12 @@ def get_db():
         """
 
         db = g._database = MongoClient(
-        MFLIX_DB_URI,
-        # TODO: Connection Pooling
-        # Set the maximum connection pool size to 50 active connections.
-        maxPoolSize=50,
-        # TODO: Timeouts
-        # Set the write timeout limit to 2500 milliseconds.
-        waitQueueTimeoutMS=2500,
-        wtimeout=2500
+            MFLIX_DB_URI,
+            # Set the maximum connection pool size to 50 active connections.
+            maxPoolSize=50,
+            # Set the write timeout limit to 2500 milliseconds.
+            waitQueueTimeoutMS=2500,
+            wtimeout=2500
         )[MFLIX_DB_NAME]
     return db
 
@@ -163,7 +161,7 @@ def get_movies_faceted(filters, page, movies_per_page):
         movies = list(db.movies.aggregate(pipeline, allowDiskUse=True))[0]
         count = list(db.movies.aggregate(counting, allowDiskUse=True))[
             0].get("count")
-        return (movies, count)
+        return movies, count
     except OperationFailure:
         raise OperationFailure(
             "Results too large to sort, be more restrictive in filter")
@@ -242,7 +240,7 @@ def get_movies(filters, page, movies_per_page):
     # Use the cursor to only return the movies that belong on the current page.
     movies = cursor.skip(movies_per_page * page).limit(movies_per_page)
 
-    return (list(movies), total_num_movies)
+    return list(movies), total_num_movies
 
 
 def get_movie(id):
@@ -275,7 +273,7 @@ def get_movie(id):
             {
                 "$lookup": {
                     "from": "comments",
-                    "let": { "id": "$_id" },
+                    "let": {"id": "$_id"},
                     "pipeline": [
                         # only join comments with matching movie_id
                         {
@@ -298,7 +296,7 @@ def get_movie(id):
 
     # TODO: Error Handling
     # If an invalid ID is passed to `get_movie`, it should return None.
-    except (StopIteration) as _:
+    except StopIteration as _:
 
         """
         Ticket: Error Handling
@@ -353,12 +351,12 @@ def add_comment(movie_id, user, comment, date):
     """
     # TODO: Create/Update Comments
     # Construct the comment document to be inserted into MongoDB.
-    comment_doc = { "name": user.name,
-                    "email": user.email,
-                    "movie_id": ObjectId(movie_id),
-                    "text": comment,
-                    "date": date
-                    }
+    comment_doc = {"name": user.name,
+                   "email": user.email,
+                   "movie_id": ObjectId(movie_id),
+                   "text": comment,
+                   "date": date
+                   }
     return db.comments.insert_one(comment_doc)
 
 
@@ -372,8 +370,8 @@ def update_comment(comment_id, user_email, text, date):
     # Use the user_email and comment_id to select the proper comment, then
     # update the "text" and "date" of the selected comment.
     response = db.comments.update_one(
-        { "_id": ObjectId(comment_id), "email": user_email },
-        { "$set": { "text": text, "date": date } },
+        {"_id": ObjectId(comment_id), "email": user_email},
+        {"$set": { "text": text, "date": date}},
     )
 
     return response
@@ -394,7 +392,7 @@ def delete_comment(comment_id, user_email):
 
     # TODO: Delete Comments
     # Use the user_email and comment_id to delete the proper comment.
-    response = db.comments.delete_one( { "_id": ObjectId(comment_id), "email": user_email } )
+    response = db.comments.delete_one({"_id": ObjectId(comment_id), "email": user_email})
     return response
 
 
@@ -421,7 +419,7 @@ def get_user(email):
     """
     # TODO: User Management
     # Retrieve the user document corresponding with the user's email.
-    return db.users.find_one({ "email": email })
+    return db.users.find_one({"email": email})
 
 
 def add_user(name, email, hashedpw):
@@ -464,8 +462,8 @@ def login_user(email, jwt):
         # Use an UPSERT statement to update the "jwt" field in the document,
         # matching the "user_id" field with the email passed to this function.
         db.sessions.update_one(
-            { "email": email },
-            { "$set": { "jwt": jwt } }
+            {"email": email},
+            {"$set": {"jwt": jwt}}
         )
         return {"success": True}
     except Exception as e:
@@ -482,7 +480,7 @@ def logout_user(email):
     try:
         # TODO: User Management
         # Delete the document in the `sessions` collection matching the email.
-        db.sessions.delete_one({ "email": email })
+        db.sessions.delete_one({"email": email})
         return {"success": True}
     except Exception as e:
         return {"error": e}
@@ -497,7 +495,7 @@ def get_user_session(email):
     try:
         # TODO: User Management
         # Retrieve the session document corresponding with the user's email.
-        return db.sessions.find_one({ "email": email })
+        return db.sessions.find_one({"email": email})
     except Exception as e:
         return {"error": e}
 
@@ -510,8 +508,8 @@ def delete_user(email):
     try:
         # TODO: User Management
         # Delete the corresponding documents from `users` and `sessions`.
-        db.sessions.delete_one({ "email": email })
-        db.users.delete_one({ "email": email })
+        db.sessions.delete_one({"email": email})
+        db.users.delete_one({"email": email})
         if get_user(email) is None:
             return {"success": True}
         else:
@@ -538,8 +536,8 @@ def update_prefs(email, prefs):
         # TODO: User preferences
         # Use the data in "prefs" to update the user's preferences.
         response = db.users.update_one(
-            { "email": email },
-            { "$set": { "preferences": prefs } }
+            {"email": email},
+            {"$set": {"preferences": prefs}}
         )
         if response.matched_count == 0:
             return {'error': 'no user found'}
